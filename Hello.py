@@ -24,6 +24,8 @@ def run():
         page_icon="👋",
     )
 
+    st.write("NABER DENOOOO???")
+
     st.write("# Welcome to Streamlit! 👋")
 
     st.sidebar.success("Select a demo above.")
@@ -45,6 +47,8 @@ def run():
         - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
     """
     )
+
+
 
 
 if __name__ == "__main__":
