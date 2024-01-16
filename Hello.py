@@ -15,41 +15,55 @@
 import streamlit as st
 from streamlit.logger import get_logger
 
+import math
+import json
+import re
+
+import numpy as np
+import pandas as pd
+
+import soccerdata as sd
+
+import matplotlib.pyplot as plt
+from matplotlib import colors
+from matplotlib.legend_handler import HandlerTuple
+import matplotlib.patheffects as path_effects
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+from mplsoccer import Pitch
+from mplsoccer import Pitch, FontManager, Sbopen, VerticalPitch
+path_eff = [path_effects.Stroke(linewidth=1.5, foreground='black'), path_effects.Normal()]
+
 LOGGER = get_logger(__name__)
 
 
 def run():
     st.set_page_config(
-        page_title="Hello",
-        page_icon="👋",
+        page_title="My first football app",
+        page_icon="⚽",
     )
+    st.title('Football Analytics Dashboard')
 
-    st.write("NABER DENOOOO???")
+    # ws = sd.WhoScored(leagues="ENG-Premier League", seasons=2021)
+    # epl_schedule = ws.read_schedule()
+    
+    # st.dataframe(epl_schedule.head())
+    # st.table(epl_schedule.iloc[0:10])
+    st.json({'foo':'bar','fu':'ba'})
+    st.metric(label="Temp", value="273 K", delta="1.2 K")
 
-    st.write("# Welcome to Streamlit! 👋")
+    st.header('My header')
+    st.subheader('My sub')
+    st.text('Fixed width text')
+    st.code('for i in range(8): foo()')
+    st.markdown('_Markdown_') # see #*
+    st.caption('Balloons. Hundreds of them...')
+    st.latex(r''' e^{i\pi} + 1 = 0 ''')
 
     st.sidebar.success("Select a demo above.")
-
-    st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
-    )
-
-
-
 
 if __name__ == "__main__":
     run()
