@@ -3,3 +3,7 @@ numpy
 pandas
 pydeck
 streamlit
+matplotlib
+plotly
+mplsocccer
+soccerdata
