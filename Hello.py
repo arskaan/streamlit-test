@@ -18,13 +18,14 @@ from streamlit.logger import get_logger
 import math
 import json
 import re
+import ast
 
 import numpy as np
 import pandas as pd
 
 import soccerdata as sd
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 # from matplotlib import colors
 # from matplotlib.legend_handler import HandlerTuple
 # import matplotlib.patheffects as path_effects
@@ -33,9 +34,8 @@ import soccerdata as sd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# from mplsoccer import Pitch
+from mplsoccer import Pitch, VerticalPitch
 # from mplsoccer import Pitch, FontManager, Sbopen, VerticalPitch
-# path_eff = [path_effects.Stroke(linewidth=1.5, foreground='black'), path_effects.Normal()]
 
 LOGGER = get_logger(__name__)
 
@@ -83,6 +83,59 @@ def run():
         with col2:
             st.subheader("Table Attributes")
             st.dataframe(df.columns,hide_index=True)
+
+    # Create a pitch
+    pitch = Pitch(pitch_type='statsbomb', pitch_color='grass')
+
+    # Plot passes entering final third and penalty area for home team
+    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+    pitch.draw(ax=axes[0])
+    pitch.arrows(
+        df[df['type']== 'Shot']['location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['type']== 'Shot']['location'].apply(lambda x: ast.literal_eval(x)[1]),
+        df[df['type']== 'Shot']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['type']== 'Shot']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
+        color='red',
+        ax=axes[0]
+    )
+    pitch.arrows(
+        df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
+        df[df['shot_outcome']== 'Goal']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['shot_outcome']== 'Goal']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
+        color='green',
+        ax=axes[0]
+    )
+
+    pitch.draw(ax=axes[1])
+    pitch.arrows(
+        df[df['type']== 'Pass']['location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['type']== 'Pass']['location'].apply(lambda x: ast.literal_eval(x)[1]),
+        df[df['type']== 'Pass']['pass_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
+        df[df['type']== 'Pass']['pass_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
+        color='red',
+        ax=axes[1]
+    )
+    # pitch.arrows(
+    #     df[df['pass_outcome'].isnull()]['location'].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[df['pass_outcome'].isnull()]['location'].apply(lambda x: ast.literal_eval(x)[1]),
+    #     df[df['pass_outcome'].isnull()]['pass_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[df['pass_outcome'].isnull()]['pass_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
+    #     color='green',
+    #     ax=axes[1]
+    # )
+    st.pyplot(fig)
+
+    # pitch.arrows(passes_home_penalty_area.start_x, passes_home_penalty_area.start_y,
+    #             passes_home_penalty_area.end_x, passes_home_penalty_area.end_y,
+    #             color='red', ax=axes[1])
+    
+    # ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
+
+
+    # v_pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='grass')
+    # fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+    # st.pyplot(v_pitch.draw())
 
     events_filter = st.multiselect(options=df['type'].unique(),label='Event Type',default=df['type'].unique())
     # st.write(pd.DataFrame([pd.Series(df.columns).iloc[i:i+len(df.columns)//3] for i in range(0,len(df.columns),len(df.columns)//3)]))
