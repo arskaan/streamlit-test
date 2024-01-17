@@ -5,6 +5,6 @@ pydeck
 streamlit
 matplotlib
 plotly
-mplsocccer
+mplsoccer
 soccerdata
 entrypoints
