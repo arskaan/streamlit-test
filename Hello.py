@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import streamlit as st
-from streamlit.logger import get_logger
+# from streamlit.logger import get_logger
 
 import math
 import json
@@ -26,18 +26,13 @@ import pandas as pd
 import soccerdata as sd
 
 import matplotlib.pyplot as plt
-# from matplotlib import colors
-# from matplotlib.legend_handler import HandlerTuple
-# import matplotlib.patheffects as path_effects
-# from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 import plotly.express as px
 import plotly.graph_objects as go
 
 from mplsoccer import Pitch, VerticalPitch
-# from mplsoccer import Pitch, FontManager, Sbopen, VerticalPitch
 
-LOGGER = get_logger(__name__)
+# LOGGER = get_logger(__name__)
 
 
 def run():
@@ -45,11 +40,7 @@ def run():
         page_title="My first football app",
         page_icon="⚽",
     )
-    st.title('Football Analytics Dashboard')
-    st.header(f"Streamlit version: {st.__version__}")
-    # st.subheader('Example Data: Statsbomb EPL Match Events')
-    st.markdown('_Example Data: Statsbomb EPL Match Events. Magpies vs Saints 2015/16_') # see #*
-    # st.caption('Example Data: Statsbomb EPL Match Events')
+    st.subheader('Football Analytics Dashboard')
 
     # ws = sd.WhoScored(leagues="ENG-Premier League", seasons=2021)
     # epl_schedule = ws.read_schedule()
@@ -73,6 +64,9 @@ def run():
 
 
     with st.sidebar:
+        
+        events_filter = st.multiselect(options=df['type'].unique(),label='Event Type',default='Shot')
+
         col1, col2 = st.columns([4,3])
 
         with col1:
@@ -83,63 +77,6 @@ def run():
         with col2:
             st.subheader("Table Attributes")
             st.dataframe(df.columns,hide_index=True)
-
-    # Create a pitch
-    pitch = Pitch(pitch_type='statsbomb', pitch_color='grass')
-
-    # Plot passes entering final third and penalty area for home team
-    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
-    pitch.draw(ax=axes[0])
-    pitch.arrows(
-        df[df['type']== 'Shot']['location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['type']== 'Shot']['location'].apply(lambda x: ast.literal_eval(x)[1]),
-        df[df['type']== 'Shot']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['type']== 'Shot']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
-        color='red',
-        ax=axes[0]
-    )
-    pitch.arrows(
-        df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
-        df[df['shot_outcome']== 'Goal']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['shot_outcome']== 'Goal']['shot_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
-        color='green',
-        ax=axes[0]
-    )
-
-    pitch.draw(ax=axes[1])
-    pitch.arrows(
-        df[df['type']== 'Pass']['location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['type']== 'Pass']['location'].apply(lambda x: ast.literal_eval(x)[1]),
-        df[df['type']== 'Pass']['pass_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
-        df[df['type']== 'Pass']['pass_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
-        color='red',
-        ax=axes[1]
-    )
-    # pitch.arrows(
-    #     df[df['pass_outcome'].isnull()]['location'].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[df['pass_outcome'].isnull()]['location'].apply(lambda x: ast.literal_eval(x)[1]),
-    #     df[df['pass_outcome'].isnull()]['pass_end_location'].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[df['pass_outcome'].isnull()]['pass_end_location'].apply(lambda x: ast.literal_eval(x)[1]),
-    #     color='green',
-    #     ax=axes[1]
-    # )
-    st.pyplot(fig)
-
-    # pitch.arrows(passes_home_penalty_area.start_x, passes_home_penalty_area.start_y,
-    #             passes_home_penalty_area.end_x, passes_home_penalty_area.end_y,
-    #             color='red', ax=axes[1])
-    
-    # ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
-
-
-    # v_pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='grass')
-    # fig, axes = plt.subplots(1, 2, figsize=(16, 8))
-    # st.pyplot(v_pitch.draw())
-
-    events_filter = st.multiselect(options=df['type'].unique(),label='Event Type',default=df['type'].unique())
-    # st.write(pd.DataFrame([pd.Series(df.columns).iloc[i:i+len(df.columns)//3] for i in range(0,len(df.columns),len(df.columns)//3)]))
-    
     
     events_columns_mapper = {
         'Pass':[i for i in df.columns if i[:5] == 'pass_'],
@@ -155,15 +92,101 @@ def run():
         'Foul Committed': [i for i in df.columns if i[:5] == 'foul_'],
         'Dribble': [i for i in df.columns if i[:8] == 'dribble_']
     }
+
     # general_info_items = ['timestamp','period','minute','second','team','player','play_pattern','type','possession','possession_team',,'home_team','away_team','home_score','away_score']
     general_info_items = ['timestamp','period','team','player','play_pattern','type','possession','possession_team','score_margin']
+
+    current_event = 'Shot'
     if len(events_filter) == 1:
+        current_event = events_filter[0]
         if events_filter[0] in events_columns_mapper.keys():
             general_info_items.extend(events_columns_mapper[events_filter[0]])
 
-    st.container(height=40,border=False)
+    # Create a pitch
+    pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='white', positional=True)
+
+    fig, axes = plt.subplots(1, 2, figsize=(8, 5))
+    condition_team = df['team'] == home_team
+    condition_event = df['type']== current_event
+    event_end_location = f'{current_event.lower()}_end_location'
+    event_outcome = f'{current_event.lower()}_outcome'
+
+    for i in range(2):
+        if i == 0:
+            condition_team = df['team'] == home_team
+        else:
+            condition_team = df['team'] == away_team
+        pitch.draw(ax=axes[i])
+        axes[i].set_title(home_team)
+        for j in range(2):
+            if j == 0:
+                start_x = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[j])
+                end_x = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[j]) if event_end_location in df.columns else start_x
+            else:
+                start_y = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[j])
+                end_y = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[j]) if event_end_location in df.columns else start_y
+        # for k in df[event_outcome].unique():
+            
+        pitch.arrows(
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+            color='red',
+            ax=axes[i]
+        )
+
+    # pitch.draw(ax=axes[0])
+    # axes[0].set_title(home_team)
+    # pitch.arrows(
+    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1]),
+    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
+    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+    #     color='red',
+    #     ax=axes[0]
+    # )
+    # # pitch.arrows(
+    # #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
+    # #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
+    # #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
+    # #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
+    # #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+    # #     color='green',
+    # #     ax=axes[0]
+    # # )
+
+    # condition_team = df['team'] == away_team
+
+    # pitch.draw(ax=axes[1])
+    # axes[1].set_title(away_team)
+    # pitch.arrows(
+    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1]),
+    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
+    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+    #     color='red',
+    #     ax=axes[1]
+    # )
+    # pitch.arrows(
+    #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
+    #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
+    #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
+    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+    #     color='green',
+    #     ax=axes[1]
+    # )
+    st.pyplot(fig)
+
+    # ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
+
+    st.container(height=20,border=False)
     
-    st.data_editor(df[df['type'].isin(list(events_filter))][general_info_items].head(400),use_container_width=True,height=800,hide_index=True)
+    st.data_editor(df[df['type'].isin(list(events_filter))][general_info_items].set_index('timestamp').head(400),use_container_width=True,height=800)
     # st.table(df.iloc[0:10])
 
     st.json({'foo':'bar','fu':'ba'})
@@ -174,6 +197,9 @@ def run():
     st.text('Fixed width text')
     st.code('for i in range(8): foo()')
     st.latex(r''' e^{i\pi} + 1 = 0 ''')
+
+    st.markdown(f"Streamlit version: {st.__version__}")
+    st.markdown('_Example Data: Statsbomb EPL Match Events. Magpies vs Saints 2015/16_') # see #*
 
 if __name__ == "__main__":
     run()
