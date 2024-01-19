@@ -40,7 +40,7 @@ def run():
         page_title="My first football app",
         page_icon="⚽",
     )
-    st.subheader('Football Analytics Dashboard')
+    st.subheader('Match Report')
 
     # ws = sd.WhoScored(leagues="ENG-Premier League", seasons=2021)
     # epl_schedule = ws.read_schedule()
@@ -106,28 +106,60 @@ def run():
     pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='white', positional=True)
     # pitch_type is one of the following: ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
 
-    fig, axes = plt.subplots(1, 2, figsize=(8, 5))
-    condition_team = df['team'] == home_team
+    fig, axes = plt.subplots(2,df['home_team_status'].nunique(), figsize=(12, 10))
     condition_event = df['type']== current_event
     event_end_location = f'{current_event.lower()}_end_location'
     event_outcome = f'{current_event.lower()}_outcome'
+    label_colors = {}
 
     for i in range(2):
-        pitch.draw(ax=axes[i])
-        if i == 0:
-            condition_team = df['team'] == home_team
-            axes[i].set_title(home_team)
-        else:
-            condition_team = df['team'] == away_team
-            axes[i].set_title(away_team)
-        colors = ['red','green','blue','yellow','orange','purple','black','gray']
-        if event_outcome in df.columns:
-            for l,k in enumerate(df[condition_event][event_outcome].unique()):
-                condition_outcome = df[event_outcome] == k if pd.notna(k) else df[event_outcome].isna()
-                start_x = df[condition_event&condition_team&condition_outcome]['location'].apply(lambda x: ast.literal_eval(x)[0])
-                end_x = df[condition_event&condition_team&condition_outcome][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
-                start_y = df[condition_event&condition_team&condition_outcome]['location'].apply(lambda x: ast.literal_eval(x)[1])
-                end_y = df[condition_event&condition_team&condition_outcome][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
+        for x,y in enumerate(df['home_team_status'].unique()):
+            condition_match_status = df['home_team_status'] == y
+            pitch.draw(ax=axes[i,x])
+            if i == 0:
+                condition_team = df['team'] == home_team
+                axes[i,0].set_ylabel(home_team)
+                # axes[i,0].set_title(home_team)
+            else:
+                condition_team = df['team'] == away_team
+                axes[1,0].set_ylabel(away_team)
+                # axes[i,0].set_title(away_team)
+            if y == 0:
+                axes[0,x].set_title('Draw')
+            elif y == -1:
+                axes[0,x].set_title(f'{away_team} lead')
+            elif y == 1:
+                axes[0,x].set_title(f'{home_team} lead')
+
+            colors = ['red','green','blue','yellow','orange','purple','black','gray']
+            if event_outcome in df.columns:
+                for l,k in enumerate(df[condition_event][event_outcome].unique()):
+                    condition_outcome = df[event_outcome] == k if pd.notna(k) else df[event_outcome].isna()
+                    final_condition = condition_event&condition_team&condition_outcome&condition_match_status
+                    start_x = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[0])
+                    end_x = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
+                    start_y = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[1])
+                    end_y = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
+                    
+                    if min(len(start_x),len(start_y)) >0:
+                        pitch.arrows(
+                            start_x,
+                            start_y,
+                            end_x,
+                            end_y,
+                            # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+                            color=colors[l],
+                            ax=axes[i,x],
+                            label=k
+                        )
+                        label_colors[k] = colors[l]
+                    
+            else:
+                final_condition = condition_event&condition_team&condition_match_status
+                start_x = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[0])
+                end_x = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
+                start_y = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[1])
+                end_y = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
                 
                 if min(len(start_x),len(start_y)) >0:
                     pitch.arrows(
@@ -136,28 +168,14 @@ def run():
                         end_x,
                         end_y,
                         # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-                        color=colors[l],
-                        ax=axes[i],
-                        label=k
+                        color='red',
+                        ax=axes[i,x]
                     )
-        else:
-            start_x = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0])
-            end_x = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
-            start_y = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1])
-            end_y = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
-            
-            if min(len(start_x),len(start_y)) >0:
-                pitch.arrows(
-                    start_x,
-                    start_y,
-                    end_x,
-                    end_y,
-                    # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-                    color='red',
-                    ax=axes[i]
-                )
+                    label_colors[current_event] = 'red'
 
-    fig.legend(loc='lower center')
+    # axes[0,0].set_ylabel('Newcastle United', rotation=0, labelpad=100)
+    legend_labels = [plt.Line2D([], [], color=v, label=k) for k,v in label_colors.items()]
+    fig.legend(handles=legend_labels,loc='lower center',ncol=len(legend_labels))
 
     st.pyplot(fig)
 
