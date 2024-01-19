@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import streamlit as st
-# from streamlit.logger import get_logger
 
 import math
 import json
@@ -26,13 +25,14 @@ import pandas as pd
 import soccerdata as sd
 
 import matplotlib.pyplot as plt
+# from mpltools import style
 
 import plotly.express as px
 import plotly.graph_objects as go
 
 from mplsoccer import Pitch, VerticalPitch
 
-# LOGGER = get_logger(__name__)
+# style.use('ggplot')
 
 
 def run():
@@ -48,6 +48,7 @@ def run():
     df = pd.read_csv('match_events.csv')
     # st.dataframe(df.head())
     df.sort_values(by=['period','timestamp'],inplace=True)
+    df.drop(df[df['type'].isin(['Starting XI','50/50'])].index,inplace=True)
     df.set_index('index',inplace=True)
     home_team, away_team = 'Newcastle United', 'Southampton'
     df['home_team'] = home_team
@@ -60,8 +61,7 @@ def run():
         else:
             df.loc[i:,'away_score'] = df.loc[i,'away_score'] + 1
     df['score_margin'] = np.clip(df['home_score'] - df['away_score'],-2,2)
-    # df.style.hide(axis="index")
-
+    df['home_team_status'] = np.clip(df['home_score'] - df['away_score'],-1,1)
 
     with st.sidebar:
         
@@ -71,12 +71,12 @@ def run():
 
         with col1:
             st.subheader("Event Types")
-            st.dataframe(df['type'].value_counts(sort=True,ascending=False))
+            st.dataframe(df['type'].value_counts(sort=True,ascending=False),height=600)
             
 
         with col2:
             st.subheader("Table Attributes")
-            st.dataframe(df.columns,hide_index=True)
+            st.dataframe(df.columns,hide_index=True,height=600)
     
     events_columns_mapper = {
         'Pass':[i for i in df.columns if i[:5] == 'pass_'],
@@ -104,6 +104,7 @@ def run():
 
     # Create a pitch
     pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='white', positional=True)
+    # pitch_type is one of the following: ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
 
     fig, axes = plt.subplots(1, 2, figsize=(8, 5))
     condition_team = df['team'] == home_team
@@ -112,79 +113,55 @@ def run():
     event_outcome = f'{current_event.lower()}_outcome'
 
     for i in range(2):
+        pitch.draw(ax=axes[i])
         if i == 0:
             condition_team = df['team'] == home_team
+            axes[i].set_title(home_team)
         else:
             condition_team = df['team'] == away_team
-        pitch.draw(ax=axes[i])
-        axes[i].set_title(home_team)
-        for j in range(2):
-            if j == 0:
-                start_x = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[j])
-                end_x = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[j]) if event_end_location in df.columns else start_x
-            else:
-                start_y = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[j])
-                end_y = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[j]) if event_end_location in df.columns else start_y
-        # for k in df[event_outcome].unique():
+            axes[i].set_title(away_team)
+        colors = ['red','green','blue','yellow','orange','purple','black','gray']
+        if event_outcome in df.columns:
+            for l,k in enumerate(df[condition_event][event_outcome].unique()):
+                condition_outcome = df[event_outcome] == k if pd.notna(k) else df[event_outcome].isna()
+                start_x = df[condition_event&condition_team&condition_outcome]['location'].apply(lambda x: ast.literal_eval(x)[0])
+                end_x = df[condition_event&condition_team&condition_outcome][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
+                start_y = df[condition_event&condition_team&condition_outcome]['location'].apply(lambda x: ast.literal_eval(x)[1])
+                end_y = df[condition_event&condition_team&condition_outcome][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
+                
+                if min(len(start_x),len(start_y)) >0:
+                    pitch.arrows(
+                        start_x,
+                        start_y,
+                        end_x,
+                        end_y,
+                        # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+                        color=colors[l],
+                        ax=axes[i],
+                        label=k
+                    )
+        else:
+            start_x = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0])
+            end_x = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
+            start_y = df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1])
+            end_y = df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]) if event_end_location in df.columns else start_y
             
-        pitch.arrows(
-            start_x,
-            start_y,
-            end_x,
-            end_y,
-            # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-            color='red',
-            ax=axes[i]
-        )
+            if min(len(start_x),len(start_y)) >0:
+                pitch.arrows(
+                    start_x,
+                    start_y,
+                    end_x,
+                    end_y,
+                    # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
+                    color='red',
+                    ax=axes[i]
+                )
 
-    # pitch.draw(ax=axes[0])
-    # axes[0].set_title(home_team)
-    # pitch.arrows(
-    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1]),
-    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
-    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-    #     color='red',
-    #     ax=axes[0]
-    # )
-    # # pitch.arrows(
-    # #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
-    # #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
-    # #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
-    # #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
-    # #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-    # #     color='green',
-    # #     ax=axes[0]
-    # # )
+    fig.legend(loc='lower center')
 
-    # condition_team = df['team'] == away_team
-
-    # pitch.draw(ax=axes[1])
-    # axes[1].set_title(away_team)
-    # pitch.arrows(
-    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[condition_event&condition_team]['location'].apply(lambda x: ast.literal_eval(x)[1]),
-    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[condition_event&condition_team][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
-    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-    #     color='red',
-    #     ax=axes[1]
-    # )
-    # pitch.arrows(
-    #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[df['shot_outcome']== 'Goal']['location'].apply(lambda x: ast.literal_eval(x)[1]),
-    #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[0]),
-    #     df[df['shot_outcome']== 'Goal'][event_end_location].apply(lambda x: ast.literal_eval(x)[1]),
-    #     # lw=df[condition_event&condition_team]['shot_statsbomb_xg'],
-    #     color='green',
-    #     ax=axes[1]
-    # )
     st.pyplot(fig)
 
-    # ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
-
-    st.container(height=20,border=False)
+    # st.container(height=20,border=False)
     
     st.data_editor(df[df['type'].isin(list(events_filter))][general_info_items].set_index('timestamp').head(400),use_container_width=True,height=800)
     # st.table(df.iloc[0:10])

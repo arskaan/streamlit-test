@@ -4,6 +4,7 @@ pandas
 pydeck
 streamlit
 matplotlib
+mpltools
 plotly
 mplsoccer
 soccerdata
