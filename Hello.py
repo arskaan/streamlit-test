@@ -34,6 +34,52 @@ from mplsoccer import Pitch, VerticalPitch
 
 # style.use('ggplot')
 
+def get_data():
+    '''
+    in: -
+    out: dataframe with match events
+    '''
+    df = pd.read_csv('match_events.csv')
+    return df
+
+def transform_sort_data(data):
+    '''
+    in: match events dataframe
+    out: transformed match events df
+    '''
+    data.sort_values(by=['index'],inplace=True)
+    data.set_index('index',inplace=True)
+    data.drop(data[data['type'].isin(['Starting XI','50/50'])].index,inplace=True)
+    data.reset_index(drop=True,inplace=True)
+    home_team, away_team = 'Newcastle United', 'Southampton'
+    data['home_team'] = home_team
+    data['away_team'] = away_team
+    data['home_score'] = 0
+    data['away_score'] = 0
+    # st.write(data['timestamp'])
+    # st.write(data['timestamp'].astype('timedelta64[s]'))
+    data['timedelta'] = data['timestamp'].astype('timedelta64[s]')
+    data[data['period'] == 2]['timedelta'] = data[data['period'] == 2]['timedelta'] + pd.Timedelta(seconds=45)
+    data['score_changed_duration'] = np.nan
+    data.loc[0,'score_changed_duration'] = pd.to_timedelta(0)
+    # st.write(data['timedelta'])
+
+    for i in data[data['shot_outcome'] == 'Goal'].index:
+        if data.loc[i]['team'] == home_team:
+            data.loc[i:,'home_score'] = data.loc[i,'home_score'] + 1
+        else:
+            data.loc[i:,'away_score'] = data.loc[i,'away_score'] + 1
+        # st.write(data.loc[i,'timedelta'])
+        # st.write(data.loc[data.loc[:i,'score_changed_duration'].last_valid_index(),'score_changed_duration'])
+        # st.write(type(data.loc[i,'timedelta']))
+        # st.write(type(data.loc[data.loc[:i,'score_changed_duration'].last_valid_index(),'score_changed_duration']))
+        data.loc[i,'score_changed_duration'] = pd.to_timedelta(data.loc[i,'timedelta'] - data.loc[data.loc[:i,'score_changed_duration'].last_valid_index(),'timedelta']).seconds
+        # st.write(data.loc[i,'score_changed_duration']/60)
+    # df.loc[len(df)-1,'score_changed_duration'] = pd.to_timedelta(len(df)-1 - df.loc[df['score_changed_duration'].last_valid_index(),'timedelta']).seconds
+    data['score_margin'] = np.clip(data['home_score'] - data['away_score'],-2,2)
+    data['home_team_status'] = np.clip(data['home_score'] - data['away_score'],-1,1)
+    return data,home_team,away_team
+
 
 def run():
     st.set_page_config(
@@ -45,26 +91,13 @@ def run():
     # ws = sd.WhoScored(leagues="ENG-Premier League", seasons=2021)
     # epl_schedule = ws.read_schedule()
     
-    df = pd.read_csv('match_events.csv')
+    df = get_data()
     # st.dataframe(df.head())
-    df.sort_values(by=['period','timestamp'],inplace=True)
-    df.drop(df[df['type'].isin(['Starting XI','50/50'])].index,inplace=True)
-    df.set_index('index',inplace=True)
-    home_team, away_team = 'Newcastle United', 'Southampton'
-    df['home_team'] = home_team
-    df['away_team'] = away_team
-    df['home_score'] = 0
-    df['away_score'] = 0
-    for i in df[df['shot_outcome'] == 'Goal'].index:
-        if df.loc[i]['team'] == home_team:
-            df.loc[i:,'home_score'] = df.loc[i,'home_score'] + 1
-        else:
-            df.loc[i:,'away_score'] = df.loc[i,'away_score'] + 1
-    df['score_margin'] = np.clip(df['home_score'] - df['away_score'],-2,2)
-    df['home_team_status'] = np.clip(df['home_score'] - df['away_score'],-1,1)
+    df, home_team, away_team = transform_sort_data(df)
 
     with st.sidebar:
         
+        players_filter = st.multiselect(options=df['player'].unique(),label='Players',default='Georginio Wijnaldum')
         events_filter = st.multiselect(options=df['type'].unique(),label='Event Type',default='Shot')
 
         col1, col2 = st.columns([4,3])
@@ -94,7 +127,11 @@ def run():
     }
 
     # general_info_items = ['timestamp','period','minute','second','team','player','play_pattern','type','possession','possession_team',,'home_team','away_team','home_score','away_score']
-    general_info_items = ['timestamp','period','team','player','play_pattern','type','possession','possession_team','score_margin']
+    general_info_items = ['timestamp','period','team','player','play_pattern','type','possession','possession_team','score_margin','score_changed_duration']
+
+    current_player = 'Georginio Wijnaldum'
+    if len(current_player) == 1:
+        current_player = players_filter[0]
 
     current_event = 'Shot'
     if len(events_filter) == 1:
@@ -107,6 +144,7 @@ def run():
     # pitch_type is one of the following: ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
 
     fig, axes = plt.subplots(2,df['home_team_status'].nunique(), figsize=(12, 10))
+    condition_player = df['player'] == current_player
     condition_event = df['type']== current_event
     event_end_location = f'{current_event.lower()}_end_location'
     event_outcome = f'{current_event.lower()}_outcome'
@@ -135,7 +173,7 @@ def run():
             if event_outcome in df.columns:
                 for l,k in enumerate(df[condition_event][event_outcome].unique()):
                     condition_outcome = df[event_outcome] == k if pd.notna(k) else df[event_outcome].isna()
-                    final_condition = condition_event&condition_team&condition_outcome&condition_match_status
+                    final_condition = condition_event&condition_team&condition_outcome&condition_match_status&condition_player
                     start_x = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[0])
                     end_x = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
                     start_y = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[1])
@@ -155,7 +193,7 @@ def run():
                         label_colors[k] = colors[l]
                     
             else:
-                final_condition = condition_event&condition_team&condition_match_status
+                final_condition = condition_event&condition_team&condition_match_status&condition_player
                 start_x = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[0])
                 end_x = df[final_condition][event_end_location].apply(lambda x: ast.literal_eval(x)[0]) if event_end_location in df.columns else start_x
                 start_y = df[final_condition]['location'].apply(lambda x: ast.literal_eval(x)[1])
@@ -181,7 +219,7 @@ def run():
 
     # st.container(height=20,border=False)
     
-    st.data_editor(df[df['type'].isin(list(events_filter))][general_info_items].set_index('timestamp').head(400),use_container_width=True,height=800)
+    st.data_editor(df[df['type'].isin(list(events_filter))&condition_player][general_info_items].set_index('timestamp').head(400),use_container_width=True,height=800)
     # st.table(df.iloc[0:10])
 
     st.json({'foo':'bar','fu':'ba'})
