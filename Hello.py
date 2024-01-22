@@ -129,10 +129,7 @@ def run():
     # general_info_items = ['timestamp','period','minute','second','team','player','play_pattern','type','possession','possession_team',,'home_team','away_team','home_score','away_score']
     general_info_items = ['timestamp','period','team','player','play_pattern','type','possession','possession_team','score_margin','score_changed_duration']
 
-    current_player = 'Georginio Wijnaldum'
-    if len(current_player) == 1:
-        current_player = players_filter[0]
-
+    current_player = players_filter[0] if len(players_filter) == 1 else 'Georginio Wijnaldum'
     current_event = 'Shot'
     if len(events_filter) == 1:
         current_event = events_filter[0]
@@ -144,7 +141,7 @@ def run():
     # pitch_type is one of the following: ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
 
     fig, axes = plt.subplots(2,df['home_team_status'].nunique(), figsize=(12, 10))
-    condition_player = df['player'] == current_player
+    condition_player = df['player'] == current_player if len(players_filter) == 1 else df['player'].isin(players_filter)
     condition_event = df['type']== current_event
     event_end_location = f'{current_event.lower()}_end_location'
     event_outcome = f'{current_event.lower()}_outcome'
@@ -218,9 +215,92 @@ def run():
     st.pyplot(fig)
 
     # st.container(height=20,border=False)
+
+    new_df = pd.DataFrame(columns=[
+        'Yellow Cards',
+        'Red Cards',
+
+        'Goals',
+        'Assists',
+        'xG',
+        'Shots',
+        'Crosses',
+        # Shots inside the box
+        # Big Chances
+        # Big Chance Conversion Rate
+        'xG - Goals',
+        # goals + assists
+        'Carries',
+        'Passes',
+        # Pass %
+        # Shot %
+        'Dribbles',
+        # Dribble %
+        # Crosses
+
+
+
+        # Goals Conceded
+        # xG Against
+        # Shots Conceded
+        # Shots Conceded inside the box
+        # Big Chances Allowed
+        # Clean Sheets
+        # Saves
+        # Interceptions
+        # Duels
+        # Duel %
+        # Aerial Duels
+        # Aerial Duel %
+        # Blocks
+        # Recoveries
+    ])
+    for i in players_filter:
+        condition_player = df['player'] == i
+        events = {
+        'Yellow Cards':len(df[condition_player&(df['foul_committed_card']== 'Yellow Card')]),
+        'Red Cards': len(df[condition_player&(df['foul_committed_card']== 'Red Card')]),
+
+        'Goals': len(df[condition_player&(df['shot_outcome']== 'Goal')]),
+        'Assists': 0,
+        'xG': df[condition_player]['shot_statsbomb_xg'].sum(),
+        'Shots': len(df[condition_player&(df['type']== 'Shot')]),
+        'Crosses': len(df[condition_player&(df['pass_cross']== True)]),
+        # Shots inside the box
+        # Big Chances
+        # Big Chance Conversion Rate
+        'xG - Goals': df[condition_player]['shot_statsbomb_xg'].sum() - len(df[condition_player&(df['shot_outcome']== 'Goal')]),
+        # goals + assists
+        'Carries': len(df[condition_player&(df['type']== 'Carry')]),
+        'Passes': len(df[condition_player&(df['type']== 'Pass')]),
+        # Pass %
+        # Shot %
+        'Dribbles':  len(df[condition_player&(df['type']== 'Dribble')]),
+        # Dribble %
+        # Crosses
+
+
+
+        # Goals Conceded
+        # xG Against
+        # Shots Conceded
+        # Shots Conceded inside the box
+        # Big Chances Allowed
+        # Clean Sheets
+        # Saves
+        # Interceptions
+        # Duels
+        # Duel %
+        # Aerial Duels
+        # Aerial Duel %
+        # Blocks
+        # Recoveries
+        }
+        new_df.loc[i] = events
+
+    st.data_editor(new_df)
     
     st.data_editor(df[df['type'].isin(list(events_filter))&condition_player][general_info_items].set_index('timestamp').head(400),use_container_width=True,height=800)
-    # st.table(df.iloc[0:10])
 
     st.json({'foo':'bar','fu':'ba'})
     st.metric(label="Temp", value="273 K", delta="1.2 K")
