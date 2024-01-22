@@ -130,21 +130,20 @@ def run():
     general_info_items = ['timestamp','period','team','player','play_pattern','type','possession','possession_team','score_margin','score_changed_duration']
 
     current_player = players_filter[0] if len(players_filter) == 1 else 'Georginio Wijnaldum'
-    current_event = 'Shot'
-    if len(events_filter) == 1:
-        current_event = events_filter[0]
-        if events_filter[0] in events_columns_mapper.keys():
-            general_info_items.extend(events_columns_mapper[events_filter[0]])
+    current_event = events_filter[0] if len(events_filter) == 1 else 'Shot'
+    for i in events_filter:
+        if i in events_columns_mapper.keys():
+            general_info_items.extend(events_columns_mapper[i])
 
     # Create a pitch
     pitch = VerticalPitch(pitch_type='statsbomb', pitch_color='white', positional=True)
     # pitch_type is one of the following: ‘statsbomb’, ‘opta’, ‘tracab’, ‘wyscout’, ‘uefa’, ‘metricasports’, ‘custom’, ‘skillcorner’, ‘secondspectrum’ and ‘impect’
 
     fig, axes = plt.subplots(2,df['home_team_status'].nunique(), figsize=(12, 10))
-    condition_player = df['player'] == current_player if len(players_filter) == 1 else df['player'].isin(players_filter)
-    condition_event = df['type']== current_event
-    event_end_location = f'{current_event.lower()}_end_location'
-    event_outcome = f'{current_event.lower()}_outcome'
+    condition_player = df['player'] == current_player if len(players_filter) <= 1 else df['player'].isin(players_filter)
+    condition_event = df['type']== current_event if len(events_filter) <= 1 else df['type'].isin(events_filter)
+    event_end_location = f'{current_event.lower()}_end_location' if len(events_filter) <= 1 else ''
+    event_outcome = f'{current_event.lower()}_outcome' if len(events_filter) <= 1 else ''
     label_colors = {}
 
     for i in range(2):
