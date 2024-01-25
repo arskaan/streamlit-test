@@ -83,3 +83,92 @@ def map_event_columns(df):
         'Dribble': [i for i in df.columns if i[:8] == 'dribble_']
     }
     return events_columns_mapper
+
+def generate_nicknames_for_events():
+    '''
+    
+    '''
+    
+
+    indexes=[
+        'Minutes',
+        'Yellow Cards',
+        'Red Cards',
+
+        'Goals',
+        'Assists',
+        'xG',
+        'Shots',
+        'Crosses',
+        # Shots inside the box
+        # Big Chances
+        # Big Chance Conversion Rate
+        'xG - Goals',
+        # goals + assists
+        'Carries',
+        'Passes',
+        # Pass %
+        # Shot %
+        'Dribbles',
+        # Dribble %
+        # Crosses
+
+
+
+        # Goals Conceded
+        # xG Against
+        # Shots Conceded
+        # Shots Conceded inside the box
+        # Big Chances Allowed
+        # Clean Sheets
+        # Saves
+        # Interceptions
+        # Duels
+        # Duel %
+        # Aerial Duels
+        # Aerial Duel %
+        # Blocks
+        # Recoveries
+    ]
+    values=[
+        'M',
+        'YC',
+        'RC',
+
+        'G',
+        'A',
+        'xG',
+        'S',
+        'Cr',
+        # Shots inside the box
+        # Big Chances
+        # Big Chance Conversion Rate
+        'xG-G',
+        # goals + assists
+        'Ca',
+        'P',
+        # Pass %
+        # Shot %
+        'D',
+        # Dribble %
+        # Crosses
+
+
+
+        # Goals Conceded
+        # xG Against
+        # Shots Conceded
+        # Shots Conceded inside the box
+        # Big Chances Allowed
+        # Clean Sheets
+        # Saves
+        # Interceptions
+        # Duels
+        # Duel %
+        # Aerial Duels
+        # Aerial Duel %
+        # Blocks
+        # Recoveries
+    ]
+    df = pd.DataFrame(values,index=indexes)
+    return df
